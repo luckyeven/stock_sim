@@ -124,6 +124,12 @@ def index():
 def get_stocks():
     return jsonify(stocks)
 
+@app.route('/api/stock/<string:ticker>', methods=['GET'])
+def get_stock_by_ticker(ticker):
+    for stock in stocks:
+        if stock["ticker"] == ticker:
+            return jsonify(stock)
+    return jsonify({'message': 'stock not found'}), 404
 
 def update_current_price():
     while True:
