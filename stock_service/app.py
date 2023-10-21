@@ -131,7 +131,7 @@ def update_current_price():
 
             price_change = random.uniform(-5.0, 5.0)
             stock["current_price"] += price_change
-            time.sleep(0.3)
+            time.sleep(0.1)
             emit_stock_update(stock)
 
 
