@@ -1,11 +1,14 @@
 from flask import Flask, request, jsonify
-
+from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from graphene import ObjectType, String, Int, List, Float, Field, Schema
-
+import threading
+import random
+import time
 
 app = Flask(__name__)
 CORS(app)
+socketio = SocketIO(app)
 
 # mock data
 stocks = [
@@ -17,6 +20,7 @@ stocks = [
         "highest_price": 155.50,
         "lowest_price": 148.75,
         "trading_volume": 10000,
+        "current_price": 152.30,
     },
     {
         "name": "Beta Enterprises",
@@ -26,6 +30,7 @@ stocks = [
         "highest_price": 99.10,
         "lowest_price": 95.60,
         "trading_volume": 8000,
+        "current_price": 97.85,
     },
     {
         "name": "Gamma Industries",
@@ -35,6 +40,7 @@ stocks = [
         "highest_price": 227.30,
         "lowest_price": 221.90,
         "trading_volume": 12000,
+        "current_price": 223.74,
     },
     {
         "name": "Delta Services",
@@ -44,6 +50,7 @@ stocks = [
         "highest_price": 548.20,
         "lowest_price": 539.75,
         "trading_volume": 15000,
+        "current_price": 542.67,
     },
     {
         "name": "Epsilon Group",
@@ -53,6 +60,7 @@ stocks = [
         "highest_price": 326.50,
         "lowest_price": 317.80,
         "trading_volume": 11000,
+        "current_price": 321.40,
     },
 ]
 
@@ -65,6 +73,8 @@ class StockType(ObjectType):
     highest_price = Float()
     lowest_price = Float()
     trading_volume = Int()
+    current_price = Float()
+
 
 class Query(ObjectType):
     stock = Field(StockType, ticker=String(required=True))
@@ -75,7 +85,9 @@ class Query(ObjectType):
                 return stock
         return None
 
+
 schema = Schema(query=Query)
+
 
 @app.route('/graphql', methods=['POST'])
 def graphql_server():
@@ -84,12 +96,13 @@ def graphql_server():
     result = schema.execute(query)
     return jsonify(result.data)
 
+
 @app.route('/api/stocks', methods=['POST'])
 def add_stock():
     stock_data = request.get_json()
     ticker = stock_data.get('ticker')
     name = stock_data.get('name')
-    price = stock_data.get('price')
+    price = stock_data.get('price')    
 
     # Add new stock
     new_stock = {
@@ -112,5 +125,32 @@ def get_stocks():
     return jsonify(stocks)
 
 
+def update_current_price():
+    while True:
+        for stock in stocks:
+
+            price_change = random.uniform(-5.0, 5.0)
+            stock["current_price"] += price_change
+            time.sleep(0.3)
+            emit_stock_update(stock)
+
+
+update_thread = threading.Thread(target=update_current_price)
+update_thread.daemon = True
+update_thread.start()
+
+
+def emit_stock_update(stock):
+    socketio.emit("stock_update", {
+        "ticker": stock["ticker"],
+        "current_price": stock["current_price"],
+    })
+
+
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, debug=True)
