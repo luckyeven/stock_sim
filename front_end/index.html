@@ -3,14 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Query</title>
+    <title>Stock Query Using Graphql</title>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/apollo-boost@0.4.7/dist/apollo-boost.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    
     <script>
+      
+        
         const apiUrl = 'http://localhost:5000/graphql'; 
 
         const client = new ApolloClient({
             uri: apiUrl,
+        });
+
+        const socket = io.connect('http://localhost:5000');
+
+        socket.on('stock_update', (data) => {
+            const ticker = data.ticker;
+            const realTimePrice = data.real_time_price;
+            const existingData = document.getElementById('result').innerHTML;
+            const updatedData = `
+                <p>Real-Time Price for ${ticker}: $${realTimePrice.toFixed(2)}</p>
+            `;
+            document.getElementById('result').innerHTML = existingData + updatedData;
         });
 
         async function queryStockData() {
@@ -29,7 +45,6 @@
                     }
                 }
             `;
-
    
             document.getElementById('query').innerText = query;
 
@@ -39,7 +54,7 @@
                 
                 if (response.data.errors) {
                     console.error('Errors in the query: ', response.data.errors);
-                    // debugging purposes
+                 
                     document.getElementById('result').innerHTML = `<p style="color: red;">Error: ${response.data.errors[0].message}</p>`;
                 } else {
                     const stockData = response.data.stock;
@@ -51,6 +66,24 @@
                 document.getElementById('result').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
             }
         }
+
+        
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+
+        async function startLiveQuery() {
+
+          
+            do {
+                queryStockData();
+                await sleep(500);
+            } while (true);
+            
+        }
+
+
 
         function displayStockData(stockData) {
             if (!stockData) {
@@ -69,17 +102,31 @@
                 <p>Trading Volume: ${stockData.tradingVolume}</p>
                 <p>Current Price: $${stockData.currentPrice.toFixed(2)}</p>
             `;
+
+
+            if (stockData.real_time_price) {
+                resultDiv.innerHTML += `
+                    <p>Real-Time Price: $${stockData.real_time_price.toFixed(2)}</p>
+                `;
+            }       
+
         }
+
+
     </script>
 </head>
+
 <body>
     <h1>Stock Query</h1>
     <form>
         <label for="ticker">Enter Ticker Symbol:</label>
         <input type="text" id="ticker" placeholder="Enter ticker symbol" />
         <button type="button" onclick="queryStockData()">Query</button>
+        <button type="button"  onclick="startLiveQuery()">Start Live Query</button>
+      
     </form>
-    <pre id="query"></pre> 
+    <pre id="query"></pre>
     <div id="result"></div>
 </body>
+
 </html>
