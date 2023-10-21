@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,11 +8,11 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/apollo-boost@0.4.7/dist/apollo-boost.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    
+
     <script>
-      
-        
-        const apiUrl = 'http://localhost:5000/graphql'; 
+
+
+        const apiUrl = 'http://localhost:5000/graphql';
 
         const client = new ApolloClient({
             uri: apiUrl,
@@ -45,16 +46,16 @@
                     }
                 }
             `;
-   
+
             document.getElementById('query').innerText = query;
 
             try {
                 const response = await axios.post(apiUrl, { query });
-                console.log(response); 
-                
+                console.log(response);
+
                 if (response.data.errors) {
                     console.error('Errors in the query: ', response.data.errors);
-                 
+
                     document.getElementById('result').innerHTML = `<p style="color: red;">Error: ${response.data.errors[0].message}</p>`;
                 } else {
                     const stockData = response.data.stock;
@@ -62,12 +63,12 @@
                 }
             } catch (error) {
                 console.error('Error fetching data: ', error);
-            
+
                 document.getElementById('result').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
             }
         }
 
-        
+
         function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
@@ -75,14 +76,61 @@
 
         async function startLiveQuery() {
 
-          
+
             do {
                 queryStockData();
-                await sleep(500);
+                await sleep(100);
             } while (true);
-            
+
         }
 
+
+        async function startLiveQueryREST() {
+
+
+            do {
+                fetchStockDataREST();
+                await sleep(100);
+            } while (true);
+
+        }
+        async function fetchStockDataREST() {
+            const ticker = document.getElementById('restTicker').value;
+            const resultDiv = document.getElementById('result');
+
+            try {
+                const response = await axios.get(`http://localhost:5000/api/stock/${ticker}`);
+                console.log(response);
+
+              
+                const stockData = response.data;
+
+             
+                resultDiv.innerHTML = '';
+
+           
+                if (stockData && stockData.name) {
+               
+                    let content = `
+                        <h2>${stockData.name}</h2>
+                        <p>Ticker: ${stockData.ticker}</p>
+                        <p>Highest Price: ${stockData.highest_price}</p>
+                        <p>Lowest Price: ${stockData.lowest_price}</p>
+                        <p>Trading Volume: ${stockData.trading_volume}</p>
+                        <p>Current Price: $${stockData.current_price}</p>
+                    `;
+              
+                    resultDiv.innerHTML = content;
+                } else {
+                 
+                    resultDiv.innerHTML = '<p style="color: red;">Stock not found!</p>';
+                }
+            } catch (error) {
+                console.error('Error fetching data: ', error);
+              
+                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
 
 
         function displayStockData(stockData) {
@@ -108,7 +156,7 @@
                 resultDiv.innerHTML += `
                     <p>Real-Time Price: $${stockData.real_time_price.toFixed(2)}</p>
                 `;
-            }       
+            }
 
         }
 
@@ -117,14 +165,26 @@
 </head>
 
 <body>
-    <h1>GraphQL</h1>
+    <h1>Stock Query</h1>
+
+    <!-- GraphQL Query Form -->
     <form>
-        <label for="ticker">Enter Ticker Symbol:</label>
-        <input type="text" id="ticker" placeholder="Enter ticker symbol" />
+        <label for="ticker">Enter Ticker Symbol (GraphQL):</label>
+        <input type="text" id="ticker" placeholder="Example ticker: BETA" />
         <button type="button" onclick="queryStockData()">Query</button>
-        <button type="button"  onclick="startLiveQuery()">Start Live Query</button>
-      
+        <button type="button" onclick="startLiveQuery()">Start Live Query</button>
     </form>
+
+    <br>
+
+    <!-- REST Query Form -->
+    <form>
+        <label for="restTicker">Enter Ticker Symbol (REST):</label>
+        <input type="text" id="restTicker" placeholder="Example ticker: BETA" />
+        <button type="button" onclick="fetchStockDataREST()">Fetch</button>
+        <button type="button" onclick="startLiveQueryREST()">Start Live Query</button>
+    </form>
+
     <pre id="query"></pre>
     <div id="result"></div>
 </body>

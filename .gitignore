@@ -1,6 +1,6 @@
 # Virtual Environments
 .env
-
+.venv
 
 # General
 *.log
